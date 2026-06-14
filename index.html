@@ -5,24 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Abfahrten Meggen Lerchenbühl</title>
     <style>
-        /* Marine Blue background and all base text set to white */
-        body { background: #003366; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 12px; margin: 0; overflow: hidden; }
-        
-        /* Slightly smaller title */
-        .title { font-size: 18px; color: #fff; font-weight: bold; margin-bottom: 20px; text-align: center; letter-spacing: 0.5px; }
-        
-        /* Subtle lighter blue separator lines for the rows */
-        .row { display: flex; align-items: center; padding: 14px 0; border-bottom: 1px solid #004c87; font-size: 20px; }
-        
-        /* All columns forced to white text */
-        .time { color: #fff; width: 60px; font-weight: bold; }
-        .delay-col { color: #fff; width: 45px; font-weight: bold; font-size: 18px; }
-        .line { color: #fff; width: 50px; font-weight: bold; }
-        .dest { color: #fff; flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        body { background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 12px; margin: 0; overflow: hidden; }
+        .title { font-size: 22px; color: #ffdd00; font-weight: bold; margin-bottom: 15px; text-align: center; letter-spacing: 0.5px; }
+        .row { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #222; font-size: 20px; }
+        .time { color: #00ff00; width: 60px; font-weight: bold; }
+        .delay-col { color: #ff9500; width: 45px; font-weight: bold; font-size: 18px; }
+        .line { color: #ff3b30; width: 50px; font-weight: bold; }
+        .dest { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
 <body>
-    <div class="title" id="station-name">LADE ABFAHRTEN...</div>
+    <div class="title" id="station-name">Lade Abfahrten...</div>
     <div id="board"></div>
 
     <script>
@@ -30,16 +23,17 @@
 
         async function updateBoard() {
             try {
-                // Limit changed to exactly 6 departures
-                const res = await fetch(`https://transport.opendata.ch/v1/stationboard?station=${encodeURIComponent(station)}&limit=6`);
+                const res = await fetch(`https://transport.opendata.ch/v1/stationboard?station=${encodeURIComponent(station)}&limit=8`);
                 const data = await res.json();
                 
                 document.getElementById('station-name').innerText = data.station.name.toUpperCase();
                 
                 let html = '';
                 data.stationboard.forEach(dep => {
+                    // 1. Format scheduled departure time
                     const time = new Date(dep.stop.departure).toLocaleTimeString('de-CH', {hour: '2-digit', minute:'2-digit'});
                     
+                    // 2. Calculate delay automatically if provided by API
                     let delayText = '';
                     let delayMins = 0;
 
@@ -56,9 +50,26 @@
                         delayText = `+${delayMins}'`;
                     }
 
+                    // 3. Get line name (Bus number)
                     const lineName = dep.number || dep.category; 
                     
+                    // 4. Generate layout with the dedicated delay column
                     html += `
                         <div class="row">
                             <div class="time">${time}</div>
-                            <div class
+                            <div class="delay-col">${delayText}</div>
+                            <div class="line">${lineName}</div>
+                            <div class="dest">${dep.to}</div>
+                        </div>`;
+                });
+                document.getElementById('board').innerHTML = html;
+            } catch (e) {
+                document.getElementById('board').innerHTML = '<div style="color:#ff3b30; text-align:center; font-size:18px; margin-top:20px;">Verbindung fehlgeschlagen...</div>';
+            }
+        }
+
+        updateBoard();
+        setInterval(updateBoard, 30000); 
+    </script>
+</body>
+</html>
