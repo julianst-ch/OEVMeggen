@@ -7,11 +7,24 @@
     <style>
         body { background: #003366; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 11px; margin: 0; overflow: hidden; }
         
-        /* Black on white clock in the upper left corner */
+        /* Left: Current Time */
         #clock { 
             position: absolute; 
             top: 11px; 
             left: 11px; 
+            background: #ffffff; 
+            color: #000000; 
+            padding: 3px 7px; 
+            font-weight: bold; 
+            font-size: 14px; 
+            border-radius: 4px; 
+        }
+
+        /* Right: Countdown to next bus */
+        #countdown { 
+            position: absolute; 
+            top: 11px; 
+            right: 11px; 
             background: #ffffff; 
             color: #000000; 
             padding: 3px 7px; 
@@ -30,68 +43,29 @@
 </head>
 <body>
     <div id="clock">--:--</div>
+    <div id="countdown">--m --s</div>
 
     <div class="title" id="station-name">LADE ABFAHRTEN...</div>
     <div id="board"></div>
 
     <script>
         const station = 'Meggen, Lerchenbühl'; 
+        let nextBusTargetTime = null; // Stores the exact timestamp of the next departure
 
-        // Live clock logic (updates every second)
-        function updateClock() {
+        // Updates both the watch and the countdown timer every second
+        function tick() {
             const now = new Date();
+            
+            // 1. Update Current Time Clock
             document.getElementById('clock').innerText = now.toLocaleTimeString('de-CH', {hour: '2-digit', minute:'2-digit'});
-        }
-
-        async function updateBoard() {
-            try {
-                const res = await fetch(`https://transport.opendata.ch/v1/stationboard?station=${encodeURIComponent(station)}&limit=8`);
-                const data = await res.json();
-                
-                document.getElementById('station-name').innerText = data.station.name.toUpperCase();
-                
-                let html = '';
-                data.stationboard.forEach(dep => {
-                    const time = new Date(dep.stop.departure).toLocaleTimeString('de-CH', {hour: '2-digit', minute:'2-digit'});
-                    
-                    let delayText = '';
-                    let delayMins = 0;
-
-                    if (dep.stop.delay !== undefined && dep.stop.delay !== null && dep.stop.delay > 0) {
-                        delayMins = dep.stop.delay;
-                    } else if (dep.stop.prognosis && dep.stop.prognosis.departure) {
-                        const planned = new Date(dep.stop.departure);
-                        const actual = new Date(dep.stop.prognosis.departure);
-                        const diff = Math.round((actual - planned) / 60000);
-                        if (diff > 0) delayMins = diff;
-                    }
-
-                    if (delayMins > 0) {
-                        delayText = `+${delayMins}'`;
-                    }
-
-                    const lineName = dep.number || dep.category; 
-                    
-                    html += `
-                        <div class="row">
-                            <div class="time">${time}</div>
-                            <div class="delay-col">${delayText}</div>
-                            <div class="line">${lineName}</div>
-                            <div class="dest">${dep.to}</div>
-                        </div>`;
-                });
-                document.getElementById('board').innerHTML = html;
-            } catch (e) {
-                document.getElementById('board').innerHTML = '<div style="color:#ff3b30; text-align:center; font-size:18px; margin-top:20px;">Verbindung fehlgeschlagen...</div>';
+            
+            // 2. Update Countdown Widget
+            if (!nextBusTargetTime) {
+                document.getElementById('countdown').innerText = '--m --s';
+                return;
             }
-        }
-
-        // Initialize and set timers
-        updateClock();
-        setInterval(updateClock, 1000); // Clock updates every 1 second
-
-        updateBoard();
-        setInterval(updateBoard, 30000); // Timetable updates every 30 seconds
-    </script>
-</body>
-</html>
+            
+            const diffMs = nextBusTargetTime - now;
+            
+            if (diffMs <= 0) {
+                document.getElementById('countdown').innerText =
