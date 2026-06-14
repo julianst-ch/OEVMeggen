@@ -3,49 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Abfahrten Kiosk</title>
+    <title>Abfahrten Meggen Lerchenbühl</title>
     <style>
-        body { background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 15px; margin: 0; overflow: hidden; }
-        .title { font-size: 26px; color: #ffdd00; font-weight: bold; margin-bottom: 20px; text-align: center; letter-spacing: 1px; }
-        .row { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #222; font-size: 22px; }
-        .time { color: #00ff00; width: 80px; font-weight: bold; }
-        .line { color: #ff3b30; width: 70px; font-weight: bold; }
-        .dest { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px; }
+        /* Marine Blue background and all base text set to white */
+        body { background: #003366; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 12px; margin: 0; overflow: hidden; }
+        
+        /* Slightly smaller title */
+        .title { font-size: 18px; color: #fff; font-weight: bold; margin-bottom: 20px; text-align: center; letter-spacing: 0.5px; }
+        
+        /* Subtle lighter blue separator lines for the rows */
+        .row { display: flex; align-items: center; padding: 14px 0; border-bottom: 1px solid #004c87; font-size: 20px; }
+        
+        /* All columns forced to white text */
+        .time { color: #fff; width: 60px; font-weight: bold; }
+        .delay-col { color: #fff; width: 45px; font-weight: bold; font-size: 18px; }
+        .line { color: #fff; width: 50px; font-weight: bold; }
+        .dest { color: #fff; flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
 <body>
-    <div class="title" id="station-name">Lade Abfahrten...</div>
+    <div class="title" id="station-name">LADE ABFAHRTEN...</div>
     <div id="board"></div>
 
     <script>
-        // CHANGE TO YOUR DESIRED STATION HERE
-        const station = 'Meggen, Lerchenbuehl'; 
+        const station = 'Meggen, Lerchenbühl'; 
 
         async function updateBoard() {
             try {
-                const res = await fetch(`https://transport.opendata.ch/v1/stationboard?station=${encodeURIComponent(station)}&limit=8`);
+                // Limit changed to exactly 6 departures
+                const res = await fetch(`https://transport.opendata.ch/v1/stationboard?station=${encodeURIComponent(station)}&limit=6`);
                 const data = await res.json();
+                
                 document.getElementById('station-name').innerText = data.station.name.toUpperCase();
                 
                 let html = '';
                 data.stationboard.forEach(dep => {
                     const time = new Date(dep.stop.departure).toLocaleTimeString('de-CH', {hour: '2-digit', minute:'2-digit'});
-                    const lineName = dep.number || dep.category;
+                    
+                    let delayText = '';
+                    let delayMins = 0;
+
+                    if (dep.stop.delay !== undefined && dep.stop.delay !== null && dep.stop.delay > 0) {
+                        delayMins = dep.stop.delay;
+                    } else if (dep.stop.prognosis && dep.stop.prognosis.departure) {
+                        const planned = new Date(dep.stop.departure);
+                        const actual = new Date(dep.stop.prognosis.departure);
+                        const diff = Math.round((actual - planned) / 60000);
+                        if (diff > 0) delayMins = diff;
+                    }
+
+                    if (delayMins > 0) {
+                        delayText = `+${delayMins}'`;
+                    }
+
+                    const lineName = dep.number || dep.category; 
+                    
                     html += `
                         <div class="row">
                             <div class="time">${time}</div>
-                            <div class="line">${lineName}</div>
-                            <div class="dest">${dep.to}</div>
-                        </div>`;
-                });
-                document.getElementById('board').innerHTML = html;
-            } catch (e) {
-                document.getElementById('board').innerHTML = '<div style="color:#ff3b30; text-align:center; font-size:18px; margin-top:20px;">Verbindung fehlgeschlagen...</div>';
-            }
-        }
-
-        updateBoard();
-        setInterval(updateBoard, 30000); // Automatically updates every 30 seconds without forcing a full page reload
-    </script>
-</body>
-</html>
+                            <div class
